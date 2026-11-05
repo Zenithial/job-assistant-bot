@@ -1,0 +1,1 @@
+This project is a job-assistant telegram bot. This bot can parse CV's and job descriptions and give feedback. This includes giving feedback on CV's, giving a summary of job descriptions and the skills needed and how well your CV suits the job description. Built using Python. 
