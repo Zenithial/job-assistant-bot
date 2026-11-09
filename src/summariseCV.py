@@ -37,7 +37,7 @@ def summarise(cv_as_text):
     4. Education
     5. Work experience
     6. Personal hobbies and interests
-    You must return a JSON response in the above format. Do not use information not given in the CV.
+    You must return a JSON response in the above format. Do not use information not given in the CV. Keep work experience responsibilties concise and no longer than two sentences.
     Here is the CV: 
     {cv_as_text}
     """
