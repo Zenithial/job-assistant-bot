@@ -1,3 +1,4 @@
+from io import BytesIO
 import os
 from typing import Final
 from telegram import Update
@@ -7,6 +8,8 @@ from BotState import BotState
 from parseCV import parsePDF
 from summariseCV import summarise
 from formatCvSummary import format_llm_response
+from summariseJobDescription import summariseDescription
+from formatJobSummary import format_llm_job_summary
 
 load_dotenv()
 
@@ -33,17 +36,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = "I don't understand that, try again"
     if state == BotState.DEFAULT:
         if text == '1':
-            response = "Upload your CV as a PDF or WORD document"
+            response = "Please upload your CV as a PDF"
             context.user_data["state"] = BotState.WAIT_FOR_CV
         elif text == '2':
             response = "Copy and paste job description as raw text"
             context.user_data["state"] = BotState.JOB_DESCRIPTION
-        elif text == 3:
-            response = "Send CV and jov description"
+        elif text == '3':
+            response = "Send CV and job description"
             context.user_data["state"] = BotState.COMPARE_CV_TO_JOB_DESCRIPTION
     elif state == BotState.JOB_DESCRIPTION:
-        #to do
-        pass
+        summary = summariseDescription(text)
+        formatted = format_llm_job_summary(summary)
+        response = formatted + "\n\n\nHere's your job summary!\nMessage 1 for CV review, 2 to analyse another job description or 3 to compare a CV to a job description"
+        context.user_data["state"] = BotState.DEFAULT
+    await update.message.reply_text(f'{response}')
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
@@ -51,9 +57,15 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         document = update.message.document
         filename = document.file_name
         if (filename.endswith(".pdf")):
-            cv_text = parsePDF(document)
+            telegram_file = await context.bot.get_file(document.file_id)
+            # Download PDF into memory
+            pdf_file = BytesIO()
+            await telegram_file.download_to_memory(pdf_file)
+            pdf_file.seek(0)
+            cv_text = parsePDF(pdf_file)
             get_llm_response = summarise(cv_text)
-            formatted = format_llm_response(get_llm_response)
+            formatted = format_llm_response(get_llm_response) + "\n\n\nHere's your CV summary!\nMessage 1 for another CV review, 2 to analyse a job description or 3 to compare a CV to a job description"
+            context.user_data["state"] = BotState.DEFAULT
             await update.message.reply_text(f"{formatted}")
         else:
             await update.message.reply_text("Please upload a pdf document")
